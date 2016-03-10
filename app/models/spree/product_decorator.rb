@@ -15,6 +15,8 @@ module Spree
       indexes :price, type: 'double'
       indexes :sku, type: 'string', index: 'not_analyzed'
       indexes :taxon_ids, type: 'string', index: 'not_analyzed'
+      indexes :brand_ids, type: 'string', index: 'not_analyzed'
+      indexes :category_ids, type: 'string', index: 'not_analyzed'
       indexes :properties, type: 'string', index: 'not_analyzed'
     end
 
@@ -35,6 +37,8 @@ module Spree
       })
       result[:properties] = property_list unless property_list.empty?
       result[:taxon_ids] = taxons.map(&:self_and_ancestors).flatten.uniq.map(&:id) unless taxons.empty?
+      result[:brand_ids] = brand_taxons.map(&:self_and_ancestors).flatten.uniq.map(&:id) unless taxons.empty?
+      result[:category_ids] = category_taxons.map(&:self_and_ancestors).flatten.uniq.map(&:id) unless taxons.empty?
       result
     end
 
@@ -116,7 +120,9 @@ module Spree
         facets = {
           price: { statistical: { field: "price" } },
           properties: { terms: { field: "properties", order: "count", size: 1000000 } },
-          taxon_ids: { terms: { field: "taxon_ids", size: 1000000 } }
+          taxon_ids: { terms: { field: "taxon_ids", size: 1000000 } },
+          brand_ids: { terms: { field: "brand_ids", size: 1000000 } },
+          category_ids: { terms: { field: "category_ids", size: 1000000 } }
         }
 
         # basic skeleton
@@ -132,6 +138,8 @@ module Spree
         result[:query][:filtered][:query] = query
         # taxon and property filters have an effect on the facets
         and_filter << { terms: { taxon_ids: taxons } } unless taxons.empty?
+        and_filter << { terms: { taxon_ids: brand_taxons } } unless brand_taxons.empty?
+        and_filter << { terms: { taxon_ids: category_taxons } } unless category_taxons.empty?
         # only return products that are available
         and_filter << { range: { available_on: { lte: "now" } } }
         result[:query][:filtered][:filter] = { "and" => and_filter } unless and_filter.empty?
